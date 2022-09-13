@@ -1,9 +1,10 @@
-import 'dart:developer';
-import 'dart:io';
-
-import 'package:band_names/src/models/band.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'dart:developer';
+import 'dart:io';
+import 'package:band_names/src/models/band.dart';
+import 'package:band_names/src/services/socket_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -21,12 +22,40 @@ class _HomePageState extends State<HomePage> {
   ];
 
   @override
+  void initState() {
+    final socketService = Provider.of<SocketService>(context, listen: false);
+    socketService.on('active-bands', (data) {
+      log(data);
+      print(data);
+    });
+
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    //final socketService = Provider.of<SocketService>(context, listen: false);
+    //socketService.socket.off('active-bands');
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final socketService = Provider.of<SocketService>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('BandNames', style: TextStyle(color: Colors.black87)),
         backgroundColor: Colors.white,
         elevation: 1,
+        actions: <Widget>[
+          Container(
+            margin: const EdgeInsets.only(right: 10),
+            child: (socketService.serverStatus == ServerStatus.onLine
+                ? const Icon(Icons.check_circle, color: Colors.green)
+                : const Icon(Icons.offline_bolt, color: Colors.red)),
+          )
+        ],
       ),
       body: ListView.builder(
         physics: const BouncingScrollPhysics(),
@@ -52,13 +81,14 @@ class _HomePageState extends State<HomePage> {
       },
       background: Container(
         padding: const EdgeInsets.only(left: 8.0),
-        color: Colors.redAccent,
+        color: Colors.grey,
         child: const Align(
           alignment: Alignment.centerLeft,
-          child: Text(
-            'Borrar banda',
-            style: TextStyle(color: Colors.white),
-          ),
+          child: Icon(Icons.delete, color: Colors.white),
+          // child: Text(
+          //   'Borrar banda',
+          //   style: TextStyle(color: Colors.white),
+          // ),
         ),
       ),
       child: ListTile(
