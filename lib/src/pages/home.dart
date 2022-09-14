@@ -56,8 +56,11 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: Column(
+        mainAxisSize: MainAxisSize.max,
         children: <Widget>[
-          _showGraph(),
+          Container(
+            child: _showGraph(),
+          ),
           Expanded(
             child: ListView.builder(
               physics: const BouncingScrollPhysics(),
@@ -177,15 +180,15 @@ class _HomePageState extends State<HomePage> {
       dataMap.putIfAbsent(band.name, () => band.votes.toDouble());
     }
 
-    final List<Color> colorList = [
-      Colors.blue,
-      Colors.blueAccent,
-      Colors.yellow,
-      Colors.yellowAccent,
-      Colors.red,
-      Colors.redAccent,
-      Colors.pink,
-      Colors.pinkAccent,
+    if (dataMap.isEmpty) {
+      dataMap.putIfAbsent('N/A', () => 0.0);
+    }
+    final colorList = <Color>[
+      const Color(0xfffdcb6e),
+      const Color(0xff0984e3),
+      const Color(0xfffd79a8),
+      const Color(0xffe17055),
+      const Color(0xff6c5ce7),
     ];
 
     return SizedBox(
@@ -194,13 +197,13 @@ class _HomePageState extends State<HomePage> {
       child: PieChart(
         dataMap: dataMap,
         animationDuration: const Duration(milliseconds: 800),
-        chartLegendSpacing: 32,
-        chartRadius: MediaQuery.of(context).size.width / 3.2,
+        //chartLegendSpacing: 32,
+        chartRadius: MediaQuery.of(context).size.width / 2.7,
         colorList: colorList,
         initialAngleInDegree: 0,
         chartType: ChartType.ring,
-        ringStrokeWidth: 32,
-        centerText: "HYBRID",
+        ringStrokeWidth: 16,
+        centerText: "Votes",
         legendOptions: const LegendOptions(
           showLegendsInRow: false,
           legendPosition: LegendPosition.right,
@@ -211,11 +214,11 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         chartValuesOptions: const ChartValuesOptions(
-          showChartValueBackground: true,
+          showChartValueBackground: false,
           showChartValues: true,
-          showChartValuesInPercentage: false,
+          showChartValuesInPercentage: true,
           showChartValuesOutside: false,
-          decimalPlaces: 1,
+          decimalPlaces: 0,
         ),
         // gradientList: ---To add gradient colors---
         // emptyColorGradient: ---Empty Color gradient---
