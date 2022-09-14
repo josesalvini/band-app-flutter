@@ -1,8 +1,9 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'dart:developer';
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:pie_chart/pie_chart.dart';
+import 'package:provider/provider.dart';
 import 'package:band_names/src/models/band.dart';
 import 'package:band_names/src/services/socket_service.dart';
 
@@ -14,28 +15,25 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<Band> bands = [
-    Band(id: '1', name: 'Metalica', votes: 5),
-    Band(id: '2', name: 'Queen', votes: 6),
-    Band(id: '3', name: 'Rata Blanca', votes: 9),
-    Band(id: '4', name: 'Hermetica', votes: 3),
-  ];
+  List<Band> bands = [];
 
   @override
   void initState() {
     final socketService = Provider.of<SocketService>(context, listen: false);
-    socketService.on('active-bands', (data) {
-      log(data);
-      print(data);
-    });
-
+    socketService.on('active-bands', _handleActiveBands);
     super.initState();
+  }
+
+  void _handleActiveBands(dynamic data) {
+    bands = (data as List).map((band) => Band.fromMap(band)).toList();
+    log('Se actualiza lista, cantididad de bandas: ${bands.length}');
+    setState(() {});
   }
 
   @override
   void dispose() {
-    //final socketService = Provider.of<SocketService>(context, listen: false);
-    //socketService.socket.off('active-bands');
+    final socketService = Provider.of<SocketService>(context, listen: false);
+    socketService.socket.off('active-bands');
     super.dispose();
   }
 
@@ -57,10 +55,17 @@ class _HomePageState extends State<HomePage> {
           )
         ],
       ),
-      body: ListView.builder(
-        physics: const BouncingScrollPhysics(),
-        itemCount: bands.length,
-        itemBuilder: (context, index) => _createItemBand(bands[index]),
+      body: Column(
+        children: <Widget>[
+          _showGraph(),
+          Expanded(
+            child: ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              itemCount: bands.length,
+              itemBuilder: (context, index) => _createItemBand(bands[index]),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         elevation: 1,
@@ -71,24 +76,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _createItemBand(Band banda) {
+    final socketService = Provider.of<SocketService>(context);
+
     return Dismissible(
       key: Key(banda.id),
       direction: DismissDirection.startToEnd,
-      onDismissed: (direction) {
-        log('direction: $direction');
-        log('id a borrar: ${banda.id}');
-        //Llamar metodo borrar en el server
-      },
+      onDismissed: (_) => socketService.emit('delete-band', {'id': banda.id}),
       background: Container(
         padding: const EdgeInsets.only(left: 8.0),
-        color: Colors.grey,
-        child: const Align(
+        color: Colors.redAccent,
+        child: Align(
           alignment: Alignment.centerLeft,
-          child: Icon(Icons.delete, color: Colors.white),
-          // child: Text(
-          //   'Borrar banda',
-          //   style: TextStyle(color: Colors.white),
-          // ),
+          child: Row(children: const <Widget>[
+            Icon(Icons.delete, color: Colors.white),
+            Text('Borrar', style: TextStyle(color: Colors.white)),
+          ]),
         ),
       ),
       child: ListTile(
@@ -104,9 +106,7 @@ class _HomePageState extends State<HomePage> {
           '${banda.votes}',
           style: const TextStyle(fontSize: 20),
         ),
-        onTap: () {
-          log(banda.name);
-        },
+        onTap: () => socketService.emit('vote-band', {'id': banda.id}),
       ),
     );
   }
@@ -163,12 +163,63 @@ class _HomePageState extends State<HomePage> {
 
   void addBandToList(String name) {
     if (name.length > 1) {
+      final socketService = Provider.of<SocketService>(context, listen: false);
       //Se puede agregar la banda a la lista
-      log('Se agrega banda: $name');
-      bands.add(Band(id: DateTime.now().toString(), name: name, votes: 0));
-      setState(() {});
+      socketService.emit('add-band', {'name': name});
     }
 
     Navigator.pop(context);
+  }
+
+  Widget _showGraph() {
+    Map<String, double> dataMap = {};
+    for (var band in bands) {
+      dataMap.putIfAbsent(band.name, () => band.votes.toDouble());
+    }
+
+    final List<Color> colorList = [
+      Colors.blue,
+      Colors.blueAccent,
+      Colors.yellow,
+      Colors.yellowAccent,
+      Colors.red,
+      Colors.redAccent,
+      Colors.pink,
+      Colors.pinkAccent,
+    ];
+
+    return SizedBox(
+      width: double.infinity,
+      height: 200,
+      child: PieChart(
+        dataMap: dataMap,
+        animationDuration: const Duration(milliseconds: 800),
+        chartLegendSpacing: 32,
+        chartRadius: MediaQuery.of(context).size.width / 3.2,
+        colorList: colorList,
+        initialAngleInDegree: 0,
+        chartType: ChartType.ring,
+        ringStrokeWidth: 32,
+        centerText: "HYBRID",
+        legendOptions: const LegendOptions(
+          showLegendsInRow: false,
+          legendPosition: LegendPosition.right,
+          showLegends: true,
+          //legendShape: _BoxShape.circle,
+          legendTextStyle: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        chartValuesOptions: const ChartValuesOptions(
+          showChartValueBackground: true,
+          showChartValues: true,
+          showChartValuesInPercentage: false,
+          showChartValuesOutside: false,
+          decimalPlaces: 1,
+        ),
+        // gradientList: ---To add gradient colors---
+        // emptyColorGradient: ---Empty Color gradient---
+      ),
+    );
   }
 }
